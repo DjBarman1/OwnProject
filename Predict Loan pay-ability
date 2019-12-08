@@ -1,0 +1,1004 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[1]:
+
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+get_ipython().run_line_magic('matplotlib', 'inline')
+import seaborn as sns
+
+
+# In[2]:
+
+
+# import train dataset and check the first 5 rows
+df_train=pd.read_csv('C:/Users/DB186021/Downloads/application_train.csv')
+# import test dataset and check the first 5 rows
+df_to_predict =pd.read_csv('C:/Users/DB186021/Downloads/application_test.csv')
+df_to_predict.head()
+
+
+# In[200]:
+
+
+print("Number of rows in training dataset",df_train.shape)
+print("Number of rows in prediction dataset",df_to_predict.shape)
+
+
+# In[5]:
+
+
+#check the properties of train dataset
+df_train.describe()
+
+
+# In[3]:
+
+
+#drop columns with missing values in train set. Some columns like,CNT_FAM_MEMBERS are correlated with other features like CNT_CHILDREN and so can be dropped
+df_train=df_train.drop(['EXT_SOURCE_1',                   
+'EXT_SOURCE_2',                    
+'EXT_SOURCE_3',                    
+'APARTMENTS_AVG',                 
+'BASEMENTAREA_AVG',               
+'YEARS_BEGINEXPLUATATION_AVG',    
+'YEARS_BUILD_AVG',                
+'COMMONAREA_AVG',                 
+'ELEVATORS_AVG',                  
+'ENTRANCES_AVG',                  
+'FLOORSMAX_AVG',                  
+'FLOORSMIN_AVG',                  
+'LANDAREA_AVG',                   
+'LIVINGAPARTMENTS_AVG',           
+'LIVINGAREA_AVG',                 
+'NONLIVINGAPARTMENTS_AVG',        
+'NONLIVINGAREA_AVG',              
+'OCCUPATION_TYPE',
+'OWN_CAR_AGE',
+'NAME_TYPE_SUITE',
+'AMT_GOODS_PRICE',
+'AMT_ANNUITY',
+'CNT_FAM_MEMBERS'],axis=1)
+
+
+# In[263]:
+
+
+# remove rows with null values
+#df_train.dropna(inplace=True)
+# check if any null values present
+df_train.isna().sum()
+
+
+# In[4]:
+
+
+#drop columns with missing values in test set
+df_to_predict=df_to_predict.drop(['EXT_SOURCE_1',                   
+'EXT_SOURCE_2',                    
+'EXT_SOURCE_3',                    
+'APARTMENTS_AVG',                 
+'BASEMENTAREA_AVG',               
+'YEARS_BEGINEXPLUATATION_AVG',    
+'YEARS_BUILD_AVG',                
+'COMMONAREA_AVG',                 
+'ELEVATORS_AVG',                  
+'ENTRANCES_AVG',                  
+'FLOORSMAX_AVG',                  
+'FLOORSMIN_AVG',                  
+'LANDAREA_AVG',                   
+'LIVINGAPARTMENTS_AVG',           
+'LIVINGAREA_AVG',                 
+'NONLIVINGAPARTMENTS_AVG',        
+'NONLIVINGAREA_AVG',              
+'OCCUPATION_TYPE',
+'OWN_CAR_AGE',
+'NAME_TYPE_SUITE',
+'AMT_GOODS_PRICE',
+'AMT_ANNUITY',
+'CNT_FAM_MEMBERS'],axis=1)
+
+
+# In[265]:
+
+
+# remove rows with null values
+#df_to_predict.dropna(inplace=True)
+# check if any null values present
+df_to_predict.isna().sum()
+
+
+# In[266]:
+
+
+df_train.shape
+
+
+# In[5]:
+
+
+# drop redundant rows if any
+df_train.drop_duplicates()
+
+
+# In[6]:
+
+
+df_to_predict.drop_duplicates()
+
+
+# In[170]:
+
+
+# Seperate continuous variables and categorical variables
+con=df_train.select_dtypes(include=np.number)
+cat=df_train.select_dtypes(exclude=np.number)
+#from sklearn.preprocessing import LabelEncoder
+#le = LabelEncoder()
+#for i in cat:
+ #   df_train[i] = le.fit_transform(df_train[i])
+#df_train.dtypes 
+
+
+# In[142]:
+
+
+#before dropping any features,estimate of the number of people with TARGET with respect to each of the categorical features
+for i in df_train:
+  df_train[df_train['TARGET']==1].groupby(i)['TARGET'].value_counts().unstack().plot(kind='bar',stacked=False,figsize=(10,6))
+
+
+# In[148]:
+
+
+# TARGET distribution in train set
+df_train.TARGET.value_counts().plot(kind='bar', title='Count (TARGET)');
+
+
+# In[104]:
+
+
+#Plot a histogram for all the continuous variables to check for skewness- before dropping any features
+for i in con:
+    plt.title(i)
+    plt.hist(con[i])
+    plt.show()
+
+
+# In[45]:
+
+
+df_train.info()
+
+
+# In[30]:
+
+
+from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import MinMaxScaler
+cols_train = list(con.columns)
+index_train = con.index.tolist()
+
+
+con_names = con.columns
+con_index = con.index
+#X_to_predict_numerical_names = X_to_predict_numerical.columns
+#X_numerical.dropna(inplace=True)
+# Create the Scaler object
+scaler = StandardScaler()
+scaled_con = scaler.fit_transform(con)
+con = pd.DataFrame(scaled_con, columns=con_names, index=index_train)
+#scaled_df_to_predict = scaler.fit_transform(X_to_predict_numerical)
+#X_to_predict_numerical = pd.DataFrame(scaled_df_to_predict, columns=X_to_predict_numerical_names, index = index_test)
+mmx = MinMaxScaler()
+con_minmax = mmx.fit_transform(con)
+#df_minmax_test = mmx.fit_transform(X_to_predict_numerical)
+con = pd.DataFrame(data=con_minmax,columns=cols_train,index=index_train)
+#X_to_predict_numerical = pd.DataFrame(data=df_minmax_test,columns=cols_test,index=index_test)
+
+
+# In[172]:
+
+
+con_count = con.copy()
+#df_train_count[df_train_count !=0 ] = 1
+sum_data = con_count.drop(['SK_ID_CURR','TARGET'],axis=1).sum(axis=0)
+
+
+# In[173]:
+
+
+plt.figure(figsize=(20,10))
+plt.xticks(rotation=90)
+sns.barplot(y = sum_data.values,x=sum_data.index)
+
+
+# In[175]:
+
+
+#distributionof income w.r.t TARGET
+sns.FacetGrid(df_train, col='TARGET').map(sns.distplot, "AMT_INCOME_TOTAL")
+
+
+# In[169]:
+
+
+sns.catplot(y="DAYS_BIRTH",x="CODE_GENDER",data=df_train,kind="box")
+
+
+# # Exploratory Data Analysis - using all features
+
+# In[47]:
+
+
+#sns.catplot(y="AMT_INCOME_TOTAL",x="CODE_GENDER",data=df_train,kind="box")
+g = sns.catplot(x="NAME_CONTRACT_TYPE",y="TARGET",hue='CODE_GENDER',data=df_train,kind="bar", height = 6 , 
+palette = "muted")
+g.despine(left=True)
+g = g.set_ylabels("Claim Probability")
+
+
+# In[50]:
+
+
+g = sns.catplot(x="CNT_CHILDREN",y="TARGET",hue='CODE_GENDER',data=df_train,kind="bar", height = 6 , 
+palette = "muted")
+g.despine(left=True)
+g = g.set_ylabels("Claim Probability")
+
+
+# In[61]:
+
+
+g = sns.catplot(x="NAME_FAMILY_STATUS",y="TARGET",hue='CODE_GENDER',data=df_train,kind="bar", height = 8)
+g.set_xticklabels(rotation=90)
+g = g.set_ylabels("Claim Probability")
+
+
+# In[59]:
+
+
+g = sns.catplot(x="NAME_INCOME_TYPE",y="TARGET",hue='CODE_GENDER',data=df_train,kind="bar", height = 8)
+g.set_xticklabels(rotation=90)
+g = g.set_ylabels("Claim Probability")
+
+
+# In[60]:
+
+
+g = sns.catplot(x="NAME_EDUCATION_TYPE",y="TARGET",hue='CODE_GENDER',data=df_train,kind="bar", height = 8)
+g.set_xticklabels(rotation=90)
+g = g.set_ylabels("Claim Probability")
+
+
+# In[62]:
+
+
+g = sns.catplot(x="NAME_HOUSING_TYPE",y="TARGET",hue='CODE_GENDER',data=df_train,kind="bar", height = 8)
+g.set_xticklabels(rotation=90)
+g = g.set_ylabels("Claim Probability")
+
+
+# In[13]:
+
+
+g = sns.catplot(x="OWN_CAR_AGE",y="TARGET",hue='CODE_GENDER',data=df_train,kind="bar", height = 10)
+g.set_xticklabels(rotation=90)
+g = g.set_ylabels("Claim Probability")
+
+
+# In[14]:
+
+
+g = sns.catplot(x="OCCUPATION_TYPE",y="TARGET",hue='CODE_GENDER',data=df_train,kind="bar", height = 10)
+g.set_xticklabels(rotation=90)
+g = g.set_ylabels("Claim Probability")
+
+
+# In[16]:
+
+
+g = sns.catplot(x="CNT_FAM_MEMBERS",y="TARGET",hue='CODE_GENDER',data=df_train,kind="bar", height = 5)
+g.set_xticklabels(rotation=90)
+g = g.set_ylabels("Claim Probability")
+
+
+# In[19]:
+
+
+g = sns.catplot(x="WEEKDAY_APPR_PROCESS_START",y="TARGET",hue='CODE_GENDER',data=df_train,kind="bar", height = 5)
+g.set_xticklabels(rotation=90)
+g = g.set_ylabels("Claim Probability")
+
+
+# In[23]:
+
+
+g = sns.catplot(x="ORGANIZATION_TYPE",y="TARGET",hue='CODE_GENDER',data=df_train,kind="bar", height =15)
+g.set_xticklabels(rotation=90)
+g = g.set_ylabels("Claim Probability")
+
+
+# In[24]:
+
+
+g = sns.catplot(x="WALLSMATERIAL_MODE",y="TARGET",hue='CODE_GENDER',data=df_train,kind="bar", height =9)
+g.set_xticklabels(rotation=90)
+g = g.set_ylabels("Claim Probability")
+
+
+# In[27]:
+
+
+g = sns.catplot(x="HOUSETYPE_MODE",y="TARGET",hue='CODE_GENDER',data=df_train,kind="bar", height =9)
+g.set_xticklabels(rotation=90)
+g = g.set_ylabels("Claim Probability")
+
+
+# In[156]:
+
+
+#df["Sex"] = df["Sex"].map({"male": 0, "female":1})
+#df=df_train[["AMT_INCOME_TOTAL","NAME_TYPE_SUITE","NAME_INCOME_TYPE","NAME_EDUCATION_TYPE","NAME_FAMILY_STATUS","NAME_HOUSING_TYPE","OWN_CAR_AGE","OCCUPATION_TYPE","CNT_FAM_MEMBERS","APARTMENTS_AVG","BASEMENTAREA_AVG","COMMONAREA_AVG","FLOORSMAX_AVG","LANDAREA_AVG","LIVINGAREA_AVG","COMMONAREA_MODE","FLOORSMAX_MODE","LANDAREA_MODE","LIVINGAREA_MODE","BASEMENTAREA_MEDI","COMMONAREA_MEDI","FLOORSMAX_MEDI","LIVINGAREA_MEDI","HOUSETYPE_MODE","FONDKAPREMONT_MODE","TOTALAREA_MODE","WALLSMATERIAL_MODE","EMERGENCYSTATE_MODE","OBS_30_CNT_SOCIAL_CIRCLE","DEF_30_CNT_SOCIAL_CIRCLE","OBS_60_CNT_SOCIAL_CIRCLE","DEF_60_CNT_SOCIAL_CIRCLE"]].copy()
+df2=df_train[["APARTMENTS_AVG","BASEMENTAREA_AVG","COMMONAREA_AVG","FLOORSMAX_AVG","LANDAREA_AVG","LIVINGAREA_AVG"]].copy()
+
+
+# In[157]:
+
+
+#creating dummy values for checking correlation
+df_dummy=pd.get_dummies(df2)
+df_dummy.shape
+
+
+# In[164]:
+
+
+# correlation heatmap of some numerical features
+plt.figure(figsize=(20,15))
+sns.heatmap(df_dummy.corr(),annot=True,cmap='viridis',fmt='.2f')
+
+
+# In[209]:
+
+
+#drop correlated features from train sets ( >0.6)   #BASEMENTAREA_AVG,FLOORSMAX_AVG,LIVINGAREA_AVG
+df_train=df_train.drop(['LIVINGAREA_AVG'], axis=1)
+df_train.shape
+
+
+# In[221]:
+
+
+#drop correlated features from test sets( >0.6)  #BASEMENTAREA_AVG,FLOORSMAX_AVG,LIVINGAREA_AVG
+#df_to_predict=df_to_predict.drop(['BASEMENTAREA_AVG'], axis=1)
+df_to_predict.shape
+
+
+# # Feature Engineering of the dataset from where columns having missing/corrupt data are dropped in Line 3 and 4
+
+# In[8]:
+
+
+#split traindata into features and target
+X = df_train.drop(["TARGET"], axis=1)
+y = df_train["TARGET"]
+X_to_predict = df_to_predict
+#X.head()
+#y.dtypes
+
+
+# In[9]:
+
+
+#Separate categorical and numerical columns in dataframe
+X_categorical = X.select_dtypes(exclude=['int', 'float'])
+X_numerical = X.select_dtypes(include=['int', 'float'])
+
+X_to_predict_categorical = X_to_predict.select_dtypes(exclude=['int', 'float'])
+X_to_predict_numerical = X_to_predict.select_dtypes(include=['int', 'float'])
+
+
+# In[10]:
+
+
+X_to_predict_categorical=X_to_predict_categorical.drop(['SK_ID_CURR'],axis=1)
+X_to_predict_categorical.head(2)
+
+
+# In[11]:
+
+
+X_categorical=X_categorical.drop(['SK_ID_CURR'],axis=1)
+X_categorical.head(2)
+
+
+# In[12]:
+
+
+#Label encode and hot encode categorical columns
+from sklearn.preprocessing import LabelEncoder,StandardScaler
+le = LabelEncoder()
+scaler=StandardScaler()
+X_categorical = X_categorical.apply(LabelEncoder().fit_transform)
+X_to_predict_categorical = X_to_predict_categorical.apply(LabelEncoder().fit_transform)
+#X_numerical=pd.DataFrame (scaler.fit_transform(X_numerical),columns=list(X_numerical))
+#X_to_predict_numerical=pd.DataFrame (scaler.fit_transform(X_to_predict_numerical),columns=list(X_to_predict_numerical))
+
+
+# In[13]:
+
+
+
+# Check the skew of all numerical features
+from scipy.stats import skew
+skewed_feats = X_numerical.apply(lambda x: skew(x.dropna())).sort_values(ascending=False)
+print("\nSkew in numerical features: \n")
+skewness = pd.DataFrame({'Skew' :skewed_feats})
+skewness.head(10)
+skewness = skewness[abs(skewness) > 0.75]
+print("There are {} skewed numerical features".format(skewness.shape[0]))
+
+
+# In[13]:
+
+
+from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import MinMaxScaler
+cols_train = list(X_numerical.columns)
+index_train = X_numerical.index.tolist()
+cols_test = list(X_to_predict_numerical.columns)
+index_test = X_to_predict_numerical.index.tolist()
+
+X_numerical_names = X_numerical.columns
+X_numerical_index = X_numerical.index
+X_to_predict_numerical_names = X_to_predict_numerical.columns
+#X_numerical.dropna(inplace=True)
+# Create the Scaler object
+scaler = StandardScaler()
+scaled_df = scaler.fit_transform(X_numerical)
+X_numerical = pd.DataFrame(scaled_df, columns=X_numerical_names, index=index_train)
+scaled_df_to_predict = scaler.fit_transform(X_to_predict_numerical)
+X_to_predict_numerical = pd.DataFrame(scaled_df_to_predict, columns=X_to_predict_numerical_names, index = index_test)
+mmx = MinMaxScaler()
+df_minmax = mmx.fit_transform(X_numerical)
+df_minmax_test = mmx.fit_transform(X_to_predict_numerical)
+X_numerical = pd.DataFrame(data=df_minmax,columns=cols_train,index=index_train)
+X_to_predict_numerical = pd.DataFrame(data=df_minmax_test,columns=cols_test,index=index_test)
+
+
+# In[14]:
+
+
+#Merge categorical and numerical columns back into respective X and X_to_predict
+X = pd.concat([X_categorical, X_numerical], axis=1)
+X_to_predict = pd.concat([X_to_predict_categorical, X_to_predict_numerical], axis=1)
+#Check shape of all three to verify that merge was done properly in above step
+print(X.shape, X_numerical.shape, X_categorical.shape)
+print(X_to_predict.shape, X_to_predict_numerical.shape, X_to_predict_categorical.shape)
+print(y.shape)
+
+
+# In[16]:
+
+
+# created a function to check the various scores
+from sklearn.model_selection import train_test_split
+from sklearn import metrics
+import numpy as np
+from sklearn.metrics import roc_auc_score,classification_report
+# We have created a function to print accuracy metrics which can be used
+# to get accuracy metrics of all models in upcoming steps
+def print_accuracy_report(y_test, y_pred,X_test, model):
+ print('ROC_AUC score :',roc_auc_score(y_test,y_pred))       
+ #print('Report score :',classification_report(y_test,y_pred ))    
+
+
+# In[17]:
+
+
+
+from sklearn.ensemble import ExtraTreesClassifier
+import matplotlib.pyplot as plt
+model = ExtraTreesClassifier()
+model.fit(X,y)
+print(model.feature_importances_) #use inbuilt class feature_importances of tree based classifiers
+#plot graph of feature importances for better visualization
+plt.figure(figsize=(20,16))
+plt.xlabel('Relative Importance',fontsize=20)
+plt.title('Feature Importances',)
+feat_importances = pd.Series(model.feature_importances_, index=X.columns)
+feat_importances.nlargest(20).plot(kind='barh')
+
+plt.show()
+
+
+# In[280]:
+
+
+# we have created a function to generate random forest regression model
+# which can then be called again after feature selection or other steps
+from sklearn.ensemble import RandomForestClassifier
+from numpy.core.umath_tests import inner1d
+def RandomForestClassifierModel(X,y):
+    X_train, X_test, y_train, y_test = train_test_split(X, y,random_state=42, test_size=0.3)
+    rf = RandomForestClassifier(random_state=42)
+    rf.fit(X_train, y_train)
+    y_pred = rf.predict(X_test)
+    print(print_accuracy_report(y_test, y_pred, X_test, rf))
+    return rf
+randomForestModel = RandomForestClassifierModel(X,y)
+
+
+# In[18]:
+
+
+# we have created a function to generate linear regression model
+# which can then be called again after feature selection or other steps
+from sklearn.linear_model import BayesianRidge
+from sklearn.metrics import accuracy_score
+def BayesianRidgeModel(X,y):
+ X_train, X_test, y_train, y_test = train_test_split(X, y,random_state=42, test_size=0.3)
+ regressor = BayesianRidge()  
+ regressor.fit(X_train, y_train)
+ y_pred = regressor.predict(X_test)
+ print(print_accuracy_report(y_test, y_pred, X_test, regressor))
+ return regressor
+linearModel = BayesianRidgeModel(X,y)
+
+
+# In[19]:
+
+
+#similarly define a function for random forest regressor
+from sklearn.ensemble import RandomForestRegressor
+def RandomForestRegressorModel(X,y):
+    X_train, X_test, y_train, y_test = train_test_split(X, y,random_state=42, test_size=0.3)
+    rf = RandomForestRegressor(random_state=42)
+    rf.fit(X_train, y_train)
+    y_pred = rf.predict(X_test)
+    print(print_accuracy_report(y_test, y_pred, X_test, rf))
+    return rf
+randomForestModel = RandomForestRegressorModel(X,y)
+
+
+# In[260]:
+
+
+# get feature importances from a model
+import matplotlib.pyplot as plt
+def plotFeatureImportances(model):
+    #first print all features importances in descending order
+    feature_importances = pd.DataFrame(model.feature_importances_,
+                                   index = X.columns,
+                                    columns=['importance']).sort_values('importance',ascending=False)
+    print(feature_importances)
+    # Next plot feature importances to get idea about where the curve breaks
+    # in the graph i.e. select top appropriate features
+    features = X.columns.tolist()
+    importances = model.feature_importances_
+    indices = np.argsort(importances)
+    plt.figure(figsize=(20,16))
+    plt.title('Feature Importances')
+    plt.barh(range(len(indices)), importances[indices], color='b', align='center')
+    plt.yticks(range(len(indices)), [features[i] for i in indices])
+    plt.xlabel('Relative Importance')
+    plt.show()
+
+
+# In[47]:
+
+
+# select features using extratreesclassifier
+from sklearn.ensemble import ExtraTreesRegressor
+def ExtraTreesRegressorModel(X,y):
+    X_train, X_test, y_train, y_test = train_test_split(X, y,random_state=42, test_size=0.3)
+    rf = ExtraTreesRegressor()
+    rf.fit(X_train, y_train)
+    y_pred = rf.predict(X_test)
+    print(print_accuracy_report(y_test, y_pred, X_test, rf))
+    return rf
+extraTreeRegressorModel = ExtraTreesRegressorModel(X,y)
+
+
+# In[48]:
+
+
+# select features using XGboost
+from xgboost import XGBClassifier
+def XGBClassifierModel(X,y):
+    X_train, X_test, y_train, y_test = train_test_split(X, y,random_state=42, test_size=0.3)
+    rf = XGBClassifier(colsample_bytree=0.4603, gamma=0.0468, 
+                             learning_rate=0.05, max_depth=3, 
+                             min_child_weight=1.7817, n_estimators=2200,
+                             reg_alpha=0.4640, reg_lambda=0.8571,
+                             subsample=0.5213, silent=1,
+                             random_state =42, nthread = -1)
+    rf.fit(X_train, y_train)
+    y_pred = rf.predict(X_test)
+    print(print_accuracy_report(y_test, y_pred, X_test, rf))
+    return rf
+xgbClassifierModel = XGBClassifierModel(X,y)
+
+
+# In[68]:
+
+
+from sklearn.model_selection import RandomizedSearchCV
+from sklearn.model_selection import GridSearchCV
+from xgboost import XGBClassifier
+params = {
+  'reg_alpha':[1e-5]
+}
+def XGBClassifierModel(X,y):
+    X_train, X_test, y_train, y_test = train_test_split(X, y,random_state=42, test_size=0.3)
+    rf=XGBClassifier(learning_rate =0.1, n_estimators=240,
+     subsample=0.8, colsample_bytree=0.8,
+     scale_pos_weight=1, seed=42, max_depth= 10, min_child_weight=5,gamma=0.0, reg_alpha=1e-5)
+    rf_random = GridSearchCV(estimator = rf, param_grid = params, cv = 3, verbose=2, n_jobs = 8)
+    rf_random.fit(X_train, y_train)
+    print(rf_random.best_params_)
+    y_pred = rf_random.best_estimator_.predict(X_test)
+    print(print_accuracy_report(y_test, y_pred, X_test, rf_random.best_estimator_))
+    return rf_random.best_estimator_
+xgBoostModelCV = XGBClassifierModel(X,y)
+
+
+# In[ ]:
+
+
+#get feature importances from xgbRegressormodel
+plotFeatureImportances(xgbRegressorModel)
+
+
+# In[49]:
+
+
+from sklearn.ensemble import GradientBoostingClassifier 
+def GradientBoostingClassifierModel(X,y):
+    X_train, X_test, y_train, y_test = train_test_split(X, y,random_state=42, test_size=0.3)
+    rf = GradientBoostingClassifier()
+    rf.fit(X_train, y_train)
+    y_pred = rf.predict(X_test)
+    print(print_accuracy_report(y_test, y_pred, X_test, rf))
+    return rf
+gradientBoostingClassifierModel = GradientBoostingClassifierModel(X,y)
+
+
+# In[ ]:
+
+
+import matplotlib.pylab as plt
+import numpy as np 
+from sklearn.model_selection import ShuffleSplit, train_test_split 
+from sklearn.ensemble import GradientBoostingRegressor 
+from sklearn.model_selection import GridSearchCV 
+def GridSearchCVGradientBoostingRegressor(X,y):
+    X_train, X_test, y_train, y_test = train_test_split(X.values, y.values,random_state=42, test_size=0.3)
+    estimator = GradientBoostingRegressor(random_state=42,n_estimators=800,learning_rate=0.05,max_depth=8)
+    cv = ShuffleSplit(n_splits=5, random_state=42, test_size=0.3)
+    param_grid={ 
+                'subsample':[1.0]
+               } 
+    n_jobs=8
+    regressor = GridSearchCV(estimator=estimator, cv=cv, param_grid=param_grid, n_jobs=n_jobs)
+    regressor.fit(X_train, y_train)
+    y_pred = regressor.best_estimator_.predict(X_test)
+    print(regressor.best_params_)
+    print(print_accuracy_report(y_test, y_pred, X_test, regressor.best_estimator_))
+    return regressor.best_estimator_
+gradientBoostingModelCV = GridSearchCVGradientBoostingRegressor(X,y)
+
+
+# In[51]:
+
+
+import matplotlib.pylab as plt
+import numpy as np 
+from sklearn.decomposition import PCA 
+from sklearn.model_selection import ShuffleSplit, train_test_split 
+from sklearn.ensemble import RandomForestRegressor 
+from sklearn.model_selection import GridSearchCV 
+def GridSearchCVRandomForestRegressor(X,y):
+    X_train, X_test, y_train, y_test = train_test_split(X, y,random_state=42, test_size=0.3)
+    estimator = RandomForestRegressor()
+    cv = ShuffleSplit(n_splits=5, random_state=42, test_size=0.3)
+    estimator = RandomForestRegressor()
+    # Create the random grid
+    param_grid = { 
+    'n_estimators': [10, 18, 22, 200, 700],
+    'max_features': ['auto', 'sqrt', 'log2']
+    }
+    n_jobs=4
+    regressor = GridSearchCV(estimator=estimator, cv=cv, param_grid=param_grid, n_jobs=n_jobs)
+    regressor.fit(X_train, y_train)
+    y_pred = regressor.best_estimator_.predict(X_test)
+    print(regressor.best_params_)
+    print(print_accuracy_report(y_test, y_pred, X_test, regressor.best_estimator_))
+    return regressor.best_estimator_
+randomForestRegressorModel = GridSearchCVRandomForestRegressor(X,y)
+
+
+# In[72]:
+
+
+from sklearn.model_selection import RandomizedSearchCV
+from sklearn.model_selection import ShuffleSplit, train_test_split 
+
+# Number of trees in random forest
+n_estimators = [644]
+# Number of features to consider at every split
+max_features = ['auto']
+# Maximum number of levels in tree
+# max_depth = [int(x) for x in np.linspace(10, 110, num = 11)]
+# max_depth.append(None)
+# Minimum number of samples required to split a node
+min_samples_split = [2, 5, 10]
+# Minimum number of samples required at each leaf node
+min_samples_leaf = [1, 2, 4]
+# Method of selecting samples for training each tree
+bootstrap = [True]
+# Create the random grid
+random_grid = {'max_features': max_features,
+               'bootstrap': bootstrap,
+               'n_estimators': n_estimators
+              }
+rf = RandomForestClassifier()
+# Random search of parameters, using 3 fold cross validation, 
+# search across 100 different combinations, and use all available cores
+# Fit the random search model
+
+def RandomizedSearchCVRandomForestClassifier(X,y):
+    X_train, X_test, y_train, y_test = train_test_split(X, y,random_state=42, test_size=0.3)
+    estimator = RandomForestClassifier()
+    cv = ShuffleSplit(n_splits=5, random_state=42, test_size=0.3)
+    n_jobs=4
+    rf_random = RandomizedSearchCV(estimator = rf, param_distributions = random_grid, cv = 3, verbose=2, random_state=42, n_jobs = 8)
+    rf_random.fit(X_train, y_train)
+    print(rf_random.best_params_)
+    y_pred = rf_random.best_estimator_.predict(X_test)
+    print(print_accuracy_report(y_test, y_pred, X_test, rf_random.best_estimator_))
+    return rf_random.best_estimator_
+randomForestClassifierModel2 = RandomizedSearchCVRandomForestClassifier(X,y)
+
+
+# In[52]:
+
+
+import matplotlib.pylab as plt
+import numpy as np 
+from sklearn.decomposition import PCA 
+from sklearn.model_selection import ShuffleSplit, train_test_split 
+from sklearn.ensemble import ExtraTreesRegressor 
+from sklearn.model_selection import GridSearchCV 
+def GridSearchCVExtraTreesRegressor(X,y):
+    X_train, X_test, y_train, y_test = train_test_split(X, y,random_state=42, test_size=0.3)
+    estimator = ExtraTreesRegressor()
+    cv = ShuffleSplit(n_splits=5, random_state=42, test_size=0.3)
+    estimator = ExtraTreesRegressor(random_state=42, n_estimators=900, max_depth=18)
+    # Create the random grid
+    param_grid = { 
+    'min_samples_split':range(10,100,5)
+    }
+    n_jobs=8
+    regressor = GridSearchCV(estimator=estimator, cv=cv, param_grid=param_grid, n_jobs=n_jobs)
+    regressor.fit(X_train, y_train)
+    y_pred = regressor.best_estimator_.predict(X_test)
+    print(regressor.best_params_)
+    print(print_accuracy_report(y_test, y_pred, X_test, regressor.best_estimator_))
+    return regressor.best_estimator_
+extraTreesRegressorModelCV = GridSearchCVExtraTreesRegressor(X,y)
+
+
+# In[217]:
+
+
+from sklearn.model_selection import RandomizedSearchCV
+from sklearn.ensemble import ExtraTreesRegressor 
+from sklearn.model_selection import ShuffleSplit, train_test_split 
+
+# Number of trees in random forest
+n_estimators = [int(x) for x in np.linspace(start = 10, stop = 900, num = 15)]
+# Number of features to consider at every split
+max_features = ['auto']
+# Maximum number of levels in tree
+# max_depth = [int(x) for x in np.linspace(10, 110, num = 11)]
+# max_depth.append(None)
+# Minimum number of samples required to split a node
+min_samples_split = [2, 5, 10]
+# Minimum number of samples required at each leaf node
+min_samples_leaf = [1,5,10,50,100,200,500]    
+# Method of selecting samples for training each tree
+bootstrap = [True, False]
+oob_score = [True, False]
+# Create the random grid
+random_grid = {'bootstrap':bootstrap}
+# Random search of parameters, using 3 fold cross validation, 
+# search across 100 different combinations, and use all available cores
+# Fit the random search model
+
+def RandomizedSearchCVExtraTreesRegressor(X,y):
+    X_train, X_test, y_train, y_test = train_test_split(X, y,random_state=42, test_size=0.3)
+    estimator = ExtraTreesRegressor(random_state=42, n_estimators=1100, max_depth=18,min_samples_split=2,min_samples_leaf=1,max_features ='auto')
+    cv = ShuffleSplit(n_splits=5, random_state=42, test_size=0.3)
+    n_jobs=8
+    etr_random = RandomizedSearchCV(estimator = estimator, param_distributions = random_grid, cv = cv, verbose=2, random_state=42, n_jobs = 8)
+    etr_random.fit(X_train, y_train)
+    y_pred = etr_random.best_estimator_.predict(X_test)
+    print(etr_random.best_params_)
+    print(print_accuracy_report(y_test, y_pred, X_test, etr_random.best_estimator_))
+    return etr_random.best_estimator_
+extraTreesRegressorModelRSCV = RandomizedSearchCVExtraTreesRegressor(X,y)
+
+
+# In[21]:
+
+
+# Support Vector Machines
+from sklearn.svm import SVC
+from sklearn.model_selection import GridSearchCV
+svc=SVC()
+
+
+# In[79]:
+
+
+params={"kernel":["linear"],"C":np.arange(1,10,3)}   #["linear","rbf","poly","sigmoid"]
+params
+
+
+# In[ ]:
+
+
+svc_cv=GridSearchCV(svc,param_grid=params,cv=5)
+svc_cv.fit(X_train,y_train)
+
+
+# In[55]:
+
+
+def SVCClassifierModel(X,y):
+    X_train, X_test, y_train, y_test = train_test_split(X, y,random_state=42, test_size=0.3)
+    svc = SVC(kernel='linear')
+    svc.fit(X_train, y_train)
+    y_pred = svc.predict(X_test)
+    print(print_accuracy_report(y_test, y_pred, X_test, svc))
+    return svc
+svcmodel = SVCClassifierModel(X,y)
+
+
+# In[17]:
+
+
+# to remove the imbalance, using SMOTE
+from imblearn.over_sampling import SMOTE
+
+smote = SMOTE(ratio='minority')
+X_sm, y_sm = smote.fit_sample(X, y)
+
+
+# In[16]:
+
+
+
+from sklearn.linear_model import BayesianRidge
+from sklearn.metrics import accuracy_score
+def BayesianRidgeModel(X_sm, y_sm):
+ X_train, X_test, y_train, y_test = train_test_split(X_sm, y_sm,random_state=42, test_size=0.3)
+ regressor = BayesianRidge()  
+ regressor.fit(X_train, y_train)
+ y_pred = regressor.predict(X_test)
+ print(print_accuracy_report(y_test, y_pred, X_test, regressor))
+ return regressor
+linearModel = BayesianRidgeModel(X_sm, y_sm)
+
+
+# In[18]:
+
+
+#optimization by using Grid Search and hyperparameters
+from sklearn.ensemble import ExtraTreesClassifier
+from sklearn.model_selection import ShuffleSplit,GridSearchCV
+def GridSearchCVExtraTreesClassifier(X_sm,y_sm):
+    X_train, X_test, y_train, y_test = train_test_split(X_sm,y_sm,random_state=42, test_size=0.3)
+    estimator =ExtraTreesClassifier()
+    cv = ShuffleSplit(n_splits=5, random_state=42, test_size=0.3)
+    estimator =ExtraTreesClassifier(random_state=42, n_estimators=900, max_depth=18)
+    # Create the random grid
+    param_grid = { 
+    'min_samples_split':range(95,96,1)
+    }
+    n_jobs=8
+    regressor = GridSearchCV(estimator=estimator, cv=cv, param_grid=param_grid, n_jobs=n_jobs)
+    regressor.fit(X_train, y_train)
+    y_pred = regressor.best_estimator_.predict(X_test)
+    print(regressor.best_params_)
+    print(print_accuracy_report(y_test, y_pred, X_test, regressor.best_estimator_))
+    return regressor.best_estimator_
+extraTreesRegressorModelsmote = GridSearchCVExtraTreesClassifier(X_sm,y_sm)
+
+
+# In[282]:
+
+
+# select features using XGboost
+from xgboost import XGBClassifier
+def XGBClassifierModel(X_sm,y_sm):
+    X_train, X_test, y_train, y_test = train_test_split(X_sm,y_sm,random_state=42, test_size=0.3)
+    rf = XGBClassifier(colsample_bytree=0.4603, gamma=0.0468, 
+                             learning_rate=0.05, max_depth=3, 
+                             min_child_weight=1.7817, n_estimators=2200,
+                             reg_alpha=0.4640, reg_lambda=0.8571,
+                             subsample=0.5213, silent=1,
+                             random_state =42, nthread = -1)
+    rf.fit(X_train, y_train)
+    y_pred = rf.predict(X_test)
+    print(print_accuracy_report(y_test, y_pred, X_test, rf))
+    return rf
+xgbClassifierModel = XGBClassifierModel(X_sm,y_sm)
+
+
+# In[283]:
+
+
+#Generate Final Prediction csv file to submit
+#X_to_predict=X_to_predict.drop(['TARGET'],1)
+#X_to_predict=X_to_predict.drop(['SK_ID_CURR'],1)
+y_test_pred = xgbClassifierModel.predict(X_to_predict.values)
+X_to_predict['SK_ID_CURR'] = df_to_predict['SK_ID_CURR'].values
+X_to_predict['TARGET'] = y_test_pred
+submission = X_to_predict[['SK_ID_CURR','TARGET']]
+#submission.head()
+submission.to_csv('C:/Dhruba/Grey Atom/Hackathon/Complete-Data-Set/Final_Prediction.csv', index=False)
+
+
+# In[19]:
+
+
+#Generate Final Prediction csv file for extraTreesRegressorModelsmote to submit in panel
+y_test_pred = extraTreesRegressorModelsmote.predict(X_to_predict.values)
+X_to_predict['SK_ID_CURR'] = df_to_predict['SK_ID_CURR'].values
+X_to_predict['TARGET'] = y_test_pred
+submission = X_to_predict[['SK_ID_CURR','TARGET']]
+#submission.head()
+submission.to_csv('C:/Dhruba/Grey Atom/Hackathon/Complete-Data-Set/Final_Prediction.csv', index=False)
+
+
+# In[284]:
+
+
+#random forest model on Smote
+from sklearn.ensemble import RandomForestClassifier
+from numpy.core.umath_tests import inner1d
+def RandomForestClassifierModel(X_sm,y_sm):
+    X_train, X_test, y_train, y_test = train_test_split(X_sm,y_sm,random_state=42, test_size=0.3)
+    rf = RandomForestClassifier(random_state=42)
+    rf.fit(X_train, y_train)
+    y_pred = rf.predict(X_test)
+    print(print_accuracy_report(y_test, y_pred, X_test, rf))
+    return rf
+randomForestModel = RandomForestClassifierModel(X_sm,y_sm)
+
+
+# In[ ]:
+
+
+# this model took long time and hence not used it. But we can definitely use this as this may improve the score.
+def SVCClassifierModel(X_sm,y_sm):
+    X_train, X_test, y_train, y_test = train_test_split(X_sm,y_sm,random_state=42, test_size=0.3)
+    svc = SVC(random_state=42)
+    svc.fit(X_train, y_train)
+    y_pred = svc.predict(X_test)
+    print(print_accuracy_report(y_test, y_pred, X_test, svc))
+    return svc
+svcmodel = SVCClassifierModel(X_sm,y_sm)
+
+
+# In[ ]:
+
+
+
+
